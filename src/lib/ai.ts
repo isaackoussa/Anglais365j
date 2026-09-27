@@ -1,7 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { Reading } from "../data/types";
+import type { Level, Reading } from "../data/types";
 import { estimatedLevel, findWord } from "./curriculum";
+import { GEMINI_MODELS, GeminiError, generateGeminiJson, streamGemini } from "./gemini";
 import { getState, type ChatMessage } from "./store";
+
+export { GEMINI_MODELS };
 
 export const MODELS = [
   { id: "claude-opus-5", label: "Claude Opus 5", desc: "Le plus fin pour corriger et expliquer (recommandé)" },
@@ -10,7 +13,15 @@ export const MODELS = [
 ];
 
 export function hasApiKey(): boolean {
-  return getState().settings.apiKey.trim().startsWith("sk-");
+  const st = getState().settings;
+  return st.provider === "gemini" ? st.geminiKey.trim().length > 10 : st.apiKey.trim().startsWith("sk-");
+}
+
+/** Nom lisible du modèle utilisé par le coach. */
+export function aiLabel(): string {
+  const st = getState().settings;
+  if (st.provider === "gemini") return GEMINI_MODELS.find((m) => m.id === st.geminiModel)?.label ?? st.geminiModel;
+  return MODELS.find((m) => m.id === st.model)?.label ?? st.model;
 }
 
 // Le SDK n'est chargé qu'à la première utilisation de l'IA (bundle initial plus léger)
@@ -29,6 +40,17 @@ function modelParams() {
 }
 
 export function friendlyError(e: unknown): string {
+  if (e instanceof DOMException && e.name === "AbortError") return "";
+  if (e instanceof GeminiError) {
+    if (e.reason === "API_KEY_INVALID" || e.status === 401) return "Clé API Gemini invalide. Vérifie-la dans les Réglages.";
+    if (e.reason === "SAFETY") return "Gemini a bloqué cette demande. Essaie de reformuler.";
+    if (e.status === 403) return "Cette clé Gemini n'a pas accès à ce modèle (ou l'API n'est pas activée). Essaie un autre modèle dans les Réglages.";
+    if (e.status === 404) return "Modèle Gemini introuvable. Choisis un autre modèle dans les Réglages.";
+    if (e.status === 429) return "Quota Gemini atteint (limite gratuite par minute ou par jour). Réessaie un peu plus tard.";
+    if (e.status >= 500) return "Gemini est momentanément indisponible. Réessaie dans quelques secondes.";
+    return `Erreur Gemini (${e.status}) : ${e.message}`;
+  }
+  if (e instanceof TypeError && /fetch/i.test(e.message)) return "Connexion impossible. Vérifie ta connexion internet.";
   const A = SDK;
   if (!A) return e instanceof Error ? e.message : "Erreur inconnue.";
   if (e instanceof A.AuthenticationError) return "Clé API invalide. Vérifie-la dans les Réglages.";
@@ -157,6 +179,17 @@ export async function streamCoach(
   onText: (full: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
+  const st = getState().settings;
+  if (st.provider === "gemini") {
+    return streamGemini(
+      st.geminiKey.trim(),
+      st.geminiModel,
+      systemFor(mode),
+      history.map((m) => ({ role: m.role === "assistant" ? "model" : "user", text: m.content })),
+      onText,
+      signal,
+    );
+  }
   const stream = (await client()).messages.stream(
     {
       ...modelParams(),
@@ -221,10 +254,33 @@ const READING_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+function readingRequest(topic: string, working: Level): string {
+  return `${learnerContext()}
+
+Write an original, engaging reading text for this learner at CEFR level ${working}${topic ? ` about: ${topic}` : " on an interesting everyday or current-affairs topic"}.
+- Length: ${working === "A1" ? "120-160" : working === "A2" ? "180-230" : working === "B1" ? "250-320" : "320-420"} words, 3 paragraphs.
+- Naturally reuse 5-8 of the learner's recently learned words.
+- glossary: 4-6 harder words from the text with French translations.
+- questions: 3 multiple-choice comprehension questions in English, 3 options each.`;
+}
+
 /** Génère un nouveau texte de lecture sur mesure (niveau + mots récents). */
 export async function generateReading(topic: string): Promise<Reading> {
   const s = getState();
   const { working } = estimatedLevel(s);
+  const request = readingRequest(topic, working);
+  if (s.settings.provider === "gemini") {
+    const data = await generateGeminiJson<Omit<Reading, "id" | "level">>(
+      s.settings.geminiKey.trim(),
+      s.settings.geminiModel,
+      "You write graded reading material for English learners. Reply with JSON only.",
+      `${request}
+
+Return a JSON object with exactly these keys:
+{"title": string, "text": string (paragraphs separated by a blank line), "glossary": [{"en": string, "fr": string}], "questions": [{"q": string, "options": [string, string, string], "answer": number (0-based index of the correct option)}]}`,
+    );
+    return { ...data, id: `ai-${Date.now()}`, level: working };
+  }
   const res = await (await client()).messages.create({
     ...modelParams(),
     max_tokens: 16000,
@@ -235,13 +291,7 @@ export async function generateReading(topic: string): Promise<Reading> {
     messages: [
       {
         role: "user",
-        content: `${learnerContext()}
-
-Write an original, engaging reading text for this learner at CEFR level ${working}${topic ? ` about: ${topic}` : " on an interesting everyday or current-affairs topic"}.
-- Length: ${working === "A1" ? "120-160" : working === "A2" ? "180-230" : working === "B1" ? "250-320" : "320-420"} words, 3 paragraphs.
-- Naturally reuse 5-8 of the learner's recently learned words.
-- glossary: 4-6 harder words from the text with French translations.
-- questions: 3 multiple-choice comprehension questions in English, 3 options each.`,
+        content: request,
       },
     ],
   });

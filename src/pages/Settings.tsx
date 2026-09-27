@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
 import { LevelBadge, toast } from "../components/ui";
 import { LEVELS, type Level } from "../data/types";
-import { MODELS } from "../lib/ai";
+import { AiSettings } from "../components/AiSettings";
 import { levelIndex } from "../lib/curriculum";
 import { englishVoices, speak } from "../lib/speech";
 import { exportData, replaceState, resetState, update, useAppState, type Pace, type State } from "../lib/store";
@@ -17,7 +17,6 @@ export const PACES: { value: Pace; label: string; desc: string }[] = [
 export function Settings() {
   const s = useAppState();
   const [voices, setVoices] = useState(englishVoices());
-  const [showKey, setShowKey] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -134,46 +133,9 @@ export function Settings() {
       <section className="card stack">
         <div className="row">
           <Icon name="sparkles" />
-          <h2 style={{ fontSize: 20 }}>Assistant IA (Claude)</h2>
+          <h2 style={{ fontSize: 20 }}>Coach IA</h2>
         </div>
-        <label className="field">
-          <span>
-            Clé API Anthropic{" "}
-            <span className="hint">
-              — à créer sur{" "}
-              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-                console.anthropic.com
-              </a>
-            </span>
-          </span>
-          <div className="row">
-            <input
-              className="input grow"
-              type={showKey ? "text" : "password"}
-              value={s.settings.apiKey}
-              onChange={(e) => set((d) => void (d.settings.apiKey = e.target.value.trim()))}
-              placeholder="sk-ant-…"
-              autoComplete="off"
-            />
-            <button className="btn outline icon" onClick={() => setShowKey(!showKey)} aria-label="Afficher la clé">
-              <Icon name="eye" size={18} />
-            </button>
-          </div>
-          <span className="hint">Stockée uniquement dans ce navigateur. Elle n'est jamais incluse dans les exports.</span>
-        </label>
-        <div className="field">
-          Modèle
-          <div className="choice-grid">
-            {MODELS.map((m) => (
-              <button key={m.id} className={`choice ${s.settings.model === m.id ? "on" : ""}`} style={{ padding: 12 }} onClick={() => set((d) => void (d.settings.model = m.id))}>
-                <div>
-                  <b style={{ display: "block" }}>{m.label}</b>
-                  <span className="faint tiny">{m.desc}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <AiSettings />
       </section>
 
       <section className="card stack">
@@ -207,8 +169,7 @@ export function Settings() {
               try {
                 const data = JSON.parse(await f.text()) as State;
                 if (data.version !== 1 || !data.profile) throw new Error();
-                const key = s.settings.apiKey;
-                replaceState({ ...data, settings: { ...data.settings, apiKey: key } });
+                replaceState({ ...data, settings: { ...s.settings, ...data.settings, apiKey: s.settings.apiKey, geminiKey: s.settings.geminiKey } });
                 toast("Sauvegarde restaurée ✓");
               } catch {
                 toast("Fichier de sauvegarde invalide");

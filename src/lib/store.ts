@@ -14,7 +14,12 @@ export interface Profile {
   reminder?: string;
 }
 
+export type AiProvider = "gemini" | "claude";
+
 export interface Settings {
+  provider: AiProvider;
+  geminiKey: string;
+  geminiModel: string;
   apiKey: string;
   model: string;
   voiceURI: string;
@@ -73,7 +78,7 @@ function initialState(): State {
     version: 1,
     onboarded: false,
     profile: { name: "", startLevel: "A1", targetLevel: "B2", dailyNew: 8, startedOn: dayKey() },
-    settings: { apiKey: "", model: DEFAULT_MODEL, voiceURI: "", rate: 0.95, theme: "system", autoplay: true },
+    settings: { provider: "gemini", geminiKey: "", geminiModel: "gemini-3.8-flash", apiKey: "", model: DEFAULT_MODEL, voiceURI: "", rate: 0.95, theme: "system", autoplay: true },
     words: {},
     customWords: [],
     grammarDone: {},
@@ -96,7 +101,12 @@ function load(): State {
       ...base,
       ...parsed,
       profile: { ...base.profile, ...parsed.profile },
-      settings: { ...base.settings, ...parsed.settings },
+      settings: {
+        ...base.settings,
+        // un ancien utilisateur qui avait déjà une clé Claude garde Claude
+        ...(parsed.settings?.apiKey && !parsed.settings.provider ? { provider: "claude" as const } : {}),
+        ...parsed.settings,
+      },
     } as State;
   } catch {
     return initialState();
@@ -197,7 +207,7 @@ export function streak(s: State): { current: number; best: number } {
 }
 
 export function exportData(): string {
-  return JSON.stringify({ ...state, settings: { ...state.settings, apiKey: "" } }, null, 2);
+  return JSON.stringify({ ...state, settings: { ...state.settings, apiKey: "", geminiKey: "" } }, null, 2);
 }
 
 /** Tout l'état (référence stable entre deux mises à jour). */

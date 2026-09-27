@@ -3,7 +3,8 @@ import { Icon } from "../components/Icon";
 import { Markdown } from "../components/Markdown";
 import { toast } from "../components/ui";
 import { ROLEPLAYS } from "../data/prompts";
-import { COACH_MODES, MODELS, extractVocab, friendlyError, hasApiKey, streamCoach, stripVocab, type CoachMode } from "../lib/ai";
+import { AiSettings } from "../components/AiSettings";
+import { COACH_MODES, aiLabel, extractVocab, friendlyError, hasApiKey, streamCoach, stripVocab, type CoachMode } from "../lib/ai";
 import { addCustomWord } from "../lib/actions";
 import { listen, speak, sttSupported } from "../lib/speech";
 import { getState, logActivity, update, useAppState, type ChatMessage } from "../lib/store";
@@ -39,7 +40,7 @@ export function Coach() {
             </div>
             <div>
               <h1 style={{ fontSize: 24 }}>Coach IA</h1>
-              <p className="faint tiny">{MODELS.find((m) => m.id === s.settings.model)?.label ?? s.settings.model} · adapté à ton niveau</p>
+              <p className="faint tiny">{aiLabel()} · adapté à ton niveau</p>
             </div>
           </div>
           {history.length > 0 && (
@@ -286,12 +287,11 @@ function Message({ msg }: { msg: ChatMessage }) {
 }
 
 function CoachSetup() {
-  const [key, setKey] = useState("");
   return (
     <div className="container narrow stack-lg">
       <div className="page-head" style={{ marginBottom: 0 }}>
         <h1>Coach IA</h1>
-        <p>Un professeur particulier disponible 24 h/24, propulsé par Claude.</p>
+        <p>Un professeur particulier disponible 24 h/24, propulsé par Gemini ou Claude.</p>
       </div>
       <div className="grid-2">
         {[
@@ -314,35 +314,20 @@ function CoachSetup() {
       <div className="card stack">
         <div className="row">
           <Icon name="key" />
-          <h2 style={{ fontSize: 20 }}>Connecte ta clé API Anthropic</h2>
+          <h2 style={{ fontSize: 20 }}>Active ton coach</h2>
         </div>
         <ol className="muted small" style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
           <li>
-            Crée un compte sur{" "}
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-              console.anthropic.com
-            </a>{" "}
-            et génère une clé API.
+            Pour Gemini : va sur{" "}
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+              aistudio.google.com/apikey
+            </a>
+            , connecte-toi avec ton compte Google et clique sur « Create API key ».
           </li>
-          <li>Colle-la ci-dessous. Elle est stockée uniquement sur cet appareil (jamais envoyée ailleurs qu'à l'API d'Anthropic).</li>
-          <li>Tu paies seulement ce que tu utilises : quelques centimes pour une longue conversation.</li>
+          <li>Colle la clé ci-dessous : le coach s'active dès qu'elle est saisie.</li>
         </ol>
-        <form
-          className="row wrap"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!key.trim().startsWith("sk-")) return toast("La clé doit commencer par « sk- »");
-            update((d) => {
-              d.settings.apiKey = key.trim();
-            });
-            toast("Coach activé ! 🎉");
-          }}
-        >
-          <input className="input grow" style={{ minWidth: 240 }} type="password" placeholder="sk-ant-…" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
-          <button className="btn primary" type="submit" disabled={!key.trim()}>
-            Activer le coach
-          </button>
-        </form>
+        <AiSettings compact />
+        <p className="faint tiny">Tu pourras changer de modèle à tout moment dans les Réglages.</p>
       </div>
     </div>
   );

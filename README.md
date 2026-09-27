@@ -18,7 +18,7 @@ Tous les mots appris avec leur statut (en cours / acquis / maîtrisé), leur pro
 ### 🔁 Réviser
 Révisions dues, **grand tour** (15 mots de tout le répertoire + grammaire), flashcards, écriture, écoute, dictée, prononciation, mots fragiles, révision par thème.
 
-### ✨ Coach IA (Claude)
+### ✨ Coach IA (Gemini ou Claude)
 - **Conversation** libre, adaptée à ton niveau, avec corrections en douceur
 - **Correcteur** : version corrigée, explication de chaque erreur en français, version « niveau supérieur »
 - **Explique-moi** : toutes tes questions de grammaire / vocabulaire
@@ -26,7 +26,11 @@ Révisions dues, **grand tour** (15 mots de tout le répertoire + grammaire), fl
 - Les mots utiles proposés par le coach s'ajoutent à ton répertoire en un clic
 - Le coach connaît ton niveau, tes mots récents et ceux que tu oublies souvent, et les réutilise
 
-> Le coach nécessite une clé API Anthropic (à créer sur [console.anthropic.com](https://console.anthropic.com/settings/keys)). Elle reste stockée dans ton navigateur et n'est envoyée qu'à l'API d'Anthropic. Tout le reste de l'app fonctionne sans clé.
+> Le coach fonctionne avec **Gemini** (Google, par défaut) ou **Claude** (Anthropic), au choix dans les Réglages.
+> - Gemini : crée une clé gratuite sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (offre gratuite avec limites par minute et par jour).
+> - Claude : crée une clé sur [console.anthropic.com](https://console.anthropic.com/settings/keys).
+>
+> La clé reste stockée dans ton navigateur et n'est envoyée qu'au fournisseur choisi. Tout le reste de l'app fonctionne sans clé.
 
 ### 📈 Progrès
 Niveau estimé, parcours A1 → C1, date estimée d'atteinte de l'objectif, série de jours, XP, calendrier de régularité, mémorisation du vocabulaire, historique des textes écrits.
@@ -43,15 +47,20 @@ Soit **~930 mots et expressions** (dont phrasal verbs, idiomes, faux amis), tous
 ## Design
 Thème clair / sombre, interface pensée mobile d'abord (barre d'onglets flottante) et bureau (barre latérale), typographies *Bricolage Grotesque* / *Inter* / *Newsreader*, animations, confettis, raccourcis clavier (1-4 pour répondre, Entrée pour valider). Installable comme une app (PWA) et utilisable hors-ligne.
 
-## Lancer le projet
+## Lancer le projet sur ton ordinateur
+Il faut [Node.js](https://nodejs.org) (version 20 ou plus) et [Git](https://git-scm.com).
+
 ```bash
+git clone https://github.com/isaackoussa/Anglais365j.git
+cd Anglais365j
+git checkout claude/english-learning-web-app-yuo3l1   # tant que le code n'est pas fusionné dans main
 npm install
 npm run dev       # http://localhost:5173
 npm test          # tests unitaires (répétition espacée, correction, intégrité du contenu)
 npm run build     # version de production dans dist/
 ```
 
-Stack : React 19, TypeScript, Vite, SDK Anthropic (chargé à la demande). Aucune base de données : la progression est enregistrée dans le navigateur (export / import JSON dans les Réglages).
+Stack : React 19, TypeScript, Vite ; API Gemini (appel REST direct) ou SDK Anthropic (chargé à la demande). Aucune base de données : la progression est enregistrée dans le navigateur (export / import JSON dans les Réglages).
 
 ## Déploiement
 Le workflow `.github/workflows/deploy.yml` publie l'app sur GitHub Pages à chaque push sur `main` (activer *Settings → Pages → Source : GitHub Actions*). Le site est 100 % statique : il fonctionne aussi sur Netlify, Vercel, etc.
