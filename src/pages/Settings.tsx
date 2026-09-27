@@ -3,6 +3,7 @@ import { Icon } from "../components/Icon";
 import { LevelBadge, toast } from "../components/ui";
 import { LEVELS, type Level } from "../data/types";
 import { AiSettings } from "../components/AiSettings";
+import { Account, Reminders } from "../components/Reminders";
 import { levelIndex } from "../lib/curriculum";
 import { englishVoices, speak } from "../lib/speech";
 import { exportData, replaceState, resetState, update, useAppState, type Pace, type State } from "../lib/store";
@@ -35,6 +36,19 @@ export function Settings() {
         <h1>Réglages</h1>
         <p>Personnalise ton programme, la voix, l'assistant IA et tes données.</p>
       </div>
+
+      <section className="card stack">
+        <h2 style={{ fontSize: 20 }}>Mon compte</h2>
+        <Account />
+      </section>
+
+      <section className="card stack">
+        <div className="row">
+          <Icon name="calendar" />
+          <h2 style={{ fontSize: 20 }}>Rappels & e-mails</h2>
+        </div>
+        <Reminders />
+      </section>
 
       <section className="card stack">
         <h2 style={{ fontSize: 20 }}>Mon programme</h2>

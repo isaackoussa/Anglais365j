@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import { Icon } from "./components/Icon";
 import { ToastHost } from "./components/ui";
+import { useSession } from "./lib/cloud";
 import { dueWords } from "./lib/curriculum";
 import { match, useRoute } from "./lib/router";
 import { todayLog, useAppState } from "./lib/store";
+import { Admin } from "./pages/Admin";
+import { AuthGate } from "./pages/AuthGate";
 import { Coach } from "./pages/Coach";
 import { Home } from "./pages/Home";
 import { LessonPage, Learn, ReadingPage } from "./pages/Learn";
@@ -35,8 +38,13 @@ function useTheme(theme: "system" | "light" | "dark") {
 export function App() {
   const s = useAppState();
   const route = useRoute();
+  const session = useSession();
   useTheme(s.settings.theme);
 
+  // Console admin : accessible sans compte élève (protégée par sa propre clé)
+  if (route.startsWith("/admin")) return <><main className="main"><Admin /></main><ToastHost /></>;
+  // Barrière e-mail : connexion par code avant tout
+  if (!session) return <><AuthGate /><ToastHost /></>;
   if (!s.onboarded) return <><Onboarding /><ToastHost /></>;
 
   // Écrans plein écran (sans navigation)

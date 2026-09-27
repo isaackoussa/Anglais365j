@@ -214,3 +214,9 @@ export function exportData(): string {
 export function useAppState(): State {
   return useSyncExternalStore(subscribe, getState);
 }
+
+/** Abonnement aux modifications (utilisé par la synchronisation en ligne). */
+export function subscribeStore(l: () => void): () => void {
+  listeners.add(l);
+  return () => listeners.delete(l);
+}
